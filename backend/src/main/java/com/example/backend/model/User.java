@@ -1,6 +1,7 @@
 
 package com.example.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -11,6 +12,7 @@ public class User {
     private Long id;
     private String email;
     private String fullName;
+    @JsonIgnore
     private String password;
     private String role; // ROLE_ADMIN or ROLE_CUSTOMER
     private boolean deleted = false;

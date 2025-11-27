@@ -47,13 +47,17 @@ public class AuthService {
         String password = body.get("password");
         Optional<User> opt = userRepository.findByEmail(email);
         if (opt.isEmpty()) {
+            System.out.println("[AuthService] login attempt for email=" + email + " - user not found");
             return ResponseEntity.status(401).body("Invalid credentials");
         }
         User user = opt.get();
+        System.out.println("[AuthService] login attempt for email=" + email + " - user found with role=" + user.getRole());
         if (user.isDeleted()) {
             return ResponseEntity.status(403).body("Account is deactivated");
         }
-        if (!passwordEncoder.matches(password, user.getPassword())) {
+        boolean matches = passwordEncoder.matches(password, user.getPassword());
+        System.out.println("[AuthService] password match result=" + matches);
+        if (!matches) {
             return ResponseEntity.status(401).body("Invalid credentials");
         }
         String token = jwtUtil.generateToken(user.getEmail(), List.of(user.getRole()));

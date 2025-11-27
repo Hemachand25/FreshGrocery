@@ -10,6 +10,14 @@ import Admin from './pages/Admin'
 import Landing from './pages/Landing'
 import UserManagement from './pages/UserManagement'
 import UserProfile from './pages/UserProfile'
+import VendorDashboard from './pages/VendorDashboard'
+import VendorProducts from './pages/VendorProducts'
+import VendorOrders from './pages/VendorOrders'
+import VendorManagement from './pages/VendorManagement'
+import Vendors from './pages/Vendors'
+import VendorStore from './pages/VendorStore'
+import ProductSearch from './pages/ProductSearch'
+import AdminSearch from './pages/AdminSearch'
 
 export default function App() {
   return (
@@ -25,8 +33,16 @@ export default function App() {
           <Route path="/orders" element={<Orders />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/users" element={<UserManagement />} />
+          <Route path="/vendors" element={<Vendors />} />
+          <Route path="/vendor/:id" element={<VendorStore />} />
+          <Route path="/products/search" element={<ProductSearch />} />
+          <Route path="/admin/search" element={<AdminSearch />} />
+          <Route path="/admin/vendors" element={<VendorManagement />} />
           <Route path="/profile" element={<UserProfile />} />
           <Route path="/orders/user/:userId" element={<Orders />} />
+          <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+          <Route path="/vendor/products" element={<VendorProducts />} />
+          <Route path="/vendor/orders" element={<VendorOrders />} />
         </Routes>
       </div>
       <Footer />

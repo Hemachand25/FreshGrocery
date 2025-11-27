@@ -13,8 +13,10 @@ public class Product {
     private String description;
     private double price;
     private int stock;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     private Category category;
+    @ManyToOne(fetch = FetchType.EAGER)
+    private User vendor;
 
     public Product(){}
 
@@ -30,4 +32,6 @@ public class Product {
     public void setStock(int stock){ this.stock = stock; }
     public Category getCategory(){ return category; }
     public void setCategory(Category category){ this.category = category; }
+    public User getVendor(){ return vendor; }
+    public void setVendor(User vendor){ this.vendor = vendor; }
 }

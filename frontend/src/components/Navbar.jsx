@@ -5,6 +5,7 @@ import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import Container from '@mui/material/Container'
 import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
 import IconButton from '@mui/material/IconButton'
 import Badge from '@mui/material/Badge'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
@@ -17,6 +18,7 @@ export default function Navbar() {
   const role = localStorage.getItem('role')
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [cartCount, setCartCount] = useState(0)
+  const [search, setSearch] = useState('')
 
   const loadCart = async () => {
     try {
@@ -53,6 +55,22 @@ export default function Navbar() {
     setShowProfileDropdown(!showProfileDropdown)
   }
 
+  const handleSearch = () => {
+    if (!search.trim()) return
+    if (role === 'ROLE_ADMIN') {
+      navigate(`/admin/search?q=${encodeURIComponent(search)}`)
+    } else {
+      // Customer or Vendor search products
+      navigate(`/products/search?q=${encodeURIComponent(search)}`)
+    }
+  }
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch()
+    }
+  }
+
   return (
     <AppBar color="primary" position="sticky">
       <Container maxWidth="lg">
@@ -61,11 +79,17 @@ export default function Navbar() {
             FreshGrocer
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Button color="inherit" component={Link} to="/products">Products</Button>
-            {token && <Button color="inherit" component={Link} to="/orders">Orders</Button>}
+            {/* Remove global Products from nav; flow is Vendors -> Vendor Store */}
+            {token && role === 'ROLE_CUSTOMER' && <Button color="inherit" component={Link} to="/orders">My Orders</Button>}
+            <Button color="inherit" component={Link} to="/vendors">Browse</Button>
+            {token && role === 'ROLE_VENDOR' && <Button color="inherit" component={Link} to="/vendor/dashboard">Dashboard</Button>}
+            {token && role === 'ROLE_VENDOR' && <Button color="inherit" component={Link} to="/vendor/products">My Products</Button>}
+            {token && role === 'ROLE_VENDOR' && <Button color="inherit" component={Link} to="/vendor/orders">Orders</Button>}
+            {token && role === 'ROLE_ADMIN' && <Button color="inherit" component={Link} to="/admin">Admin</Button>}
+            {token && role === 'ROLE_ADMIN' && <Button color="inherit" component={Link} to="/orders">All Orders</Button>}
+            {token && role === 'ROLE_ADMIN' && <Button color="inherit" component={Link} to="/users">Users</Button>}
+            {token && role === 'ROLE_ADMIN' && <Button color="inherit" component={Link} to="/admin/vendors">Vendors</Button>}
             {token && <Button color="inherit" component={Link} to="/profile">Profile</Button>}
-            {role === 'ROLE_ADMIN' && <Button color="inherit" component={Link} to="/admin">Admin</Button>}
-            {role === 'ROLE_ADMIN' && <Button color="inherit" component={Link} to="/users">Users</Button>}
             {token && role === 'ROLE_CUSTOMER' && (
               <IconButton color="inherit" component={Link} to="/cart" aria-label="Cart">
                 <Badge color="secondary" badgeContent={cartCount} invisible={cartCount === 0}>
@@ -73,6 +97,20 @@ export default function Navbar() {
                 </Badge>
               </IconButton>
             )}
+            {/* Role-based search */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+              <TextField 
+                size="small" 
+                variant="outlined" 
+                placeholder={role === 'ROLE_ADMIN' ? 'Search vendors' : 'Search products'} 
+                value={search} 
+                onChange={e=>setSearch(e.target.value)}
+                onKeyPress={handleKeyPress}
+                sx={{ bgcolor: 'white', borderRadius: 1, minWidth: 200 }} 
+              />
+              <Button variant="contained" color="secondary" onClick={handleSearch}>Search</Button>
+            </Box>
+
             {!token ? (
               <>
                 <Button variant="contained" color="secondary" component={Link} to="/login">Login</Button>

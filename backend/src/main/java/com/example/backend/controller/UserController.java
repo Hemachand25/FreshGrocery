@@ -17,6 +17,18 @@ public class UserController {
         this.userService = userService;
     }
 
+    // Public list of vendors for customers to browse vendors
+    @GetMapping("/vendors")
+    public List<User> getVendors() {
+        return userService.getVendorsPublic();
+    }
+
+    // Public: vendors that have products matching a search query
+    @GetMapping("/vendors/search")
+    public List<User> searchVendorsByProduct(@RequestParam String q) {
+        return userService.searchVendorsByProductName(q);
+    }
+
     @GetMapping("/all")
     public List<User> getAllUsers() {
         return userService.getAllUsersForAdmin();
@@ -49,5 +61,11 @@ public class UserController {
         // This would need to be implemented with OrderRepository
         // For now, return empty list
         return List.of();
+    }
+
+    // Admin search: search vendors and users by name/email
+    @GetMapping("/admin/search")
+    public Map<String, Object> adminSearch(@RequestParam String q) {
+        return userService.searchVendorsAndUsers(q);
     }
 }

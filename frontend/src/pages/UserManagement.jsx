@@ -107,9 +107,13 @@ export default function UserManagement() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.role === 'ROLE_ADMIN' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                        user.role === 'ROLE_ADMIN' ? 'bg-blue-100 text-blue-800' : 
+                        user.role === 'ROLE_VENDOR' ? 'bg-purple-100 text-purple-800' : 
+                        'bg-green-100 text-green-800'
                       }`}>
-                        {user.role === 'ROLE_ADMIN' ? 'Admin' : 'Customer'}
+                        {user.role === 'ROLE_ADMIN' ? 'Admin' : 
+                         user.role === 'ROLE_VENDOR' ? 'Vendor' : 
+                         'Customer'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

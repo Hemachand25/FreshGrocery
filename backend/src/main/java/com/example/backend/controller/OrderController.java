@@ -39,6 +39,16 @@ public class OrderController {
         return orderService.updateOrderStatus(orderId, status);
     }
 
+    // Vendor: get orders related to their products
+    @GetMapping("/vendor")
+    public List<Order> getOrdersForVendor(){ return orderService.getOrdersForVendor(); }
+
+    // Vendor updates order status for orders that include their products
+    @PutMapping("/{orderId}/vendor-status")
+    public String updateOrderStatusByVendor(@PathVariable Long orderId, @RequestParam String status){
+        return orderService.updateOrderStatusByVendor(orderId, status);
+    }
+
     // Admin filters
     @GetMapping("/all/status")
     public Page<Order> getOrdersByStatus(@RequestParam String status,
@@ -46,5 +56,11 @@ public class OrderController {
                                         @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return orderService.getOrdersByStatus(status, pageable);
+    }
+
+    // Customer marks order delivered
+    @PutMapping("/{orderId}/delivered")
+    public String markDeliveredByCustomer(@PathVariable Long orderId) {
+        return orderService.markDeliveredByCustomer(orderId);
     }
 }

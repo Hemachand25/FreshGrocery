@@ -7,6 +7,8 @@ com\example\backend\repository\CategoryRepository.class
 com\example\backend\controller\AuthController.class
 com\example\backend\model\Category.class
 com\example\backend\controller\CartController.class
+com\example\backend\controller\VendorOrderController.class
+com\example\backend\model\VendorOrder.class
 com\example\backend\service\AuthService.class
 com\example\backend\model\Order.class
 com\example\backend\service\CartService.class
@@ -20,13 +22,17 @@ com\example\backend\repository\OrderRepository.class
 com\example\backend\controller\CartController$CartItemResponse.class
 com\example\backend\repository\OrderItemRepository.class
 com\example\backend\controller\AdminController.class
+com\example\backend\controller\CategoryController.class
 com\example\backend\BackendApplication.class
+com\example\backend\controller\VendorAdminController.class
 com\example\backend\model\Product.class
 com\example\backend\model\OrderItem.class
 com\example\backend\security\SecurityConfig.class
 com\example\backend\model\User.class
 com\example\backend\repository\ProductRepository.class
 com\example\backend\controller\OrderController.class
+com\example\backend\repository\VendorOrderRepository.class
 com\example\backend\security\JwtAuthenticationFilter.class
 com\example\backend\model\CartItem.class
 com\example\backend\service\ProductService.class
+com\example\backend\service\NotificationService.class

@@ -20,20 +20,36 @@ public class DataSeeder {
     @Bean
     CommandLineRunner init(UserRepository userRepository, CategoryRepository categoryRepository, ProductRepository productRepository, PasswordEncoder passwordEncoder){
         return args->{
-            if(userRepository.count()==0){
+            // Ensure admin, customer, and vendor exist (create only when missing)
+            if(userRepository.findByEmail("admin@example.com").isEmpty()){
                 User admin = new User();
                 admin.setEmail("admin@example.com");
                 admin.setFullName("Admin");
                 admin.setPassword(passwordEncoder.encode("admin123"));
                 admin.setRole("ROLE_ADMIN");
                 userRepository.save(admin);
+                System.out.println("[DataSeeder] Created admin@example.com");
+            }
 
+            if(userRepository.findByEmail("customer@example.com").isEmpty()){
                 User customer = new User();
                 customer.setEmail("customer@example.com");
                 customer.setFullName("Customer");
                 customer.setPassword(passwordEncoder.encode("customer123"));
                 customer.setRole("ROLE_CUSTOMER");
                 userRepository.save(customer);
+                System.out.println("[DataSeeder] Created customer@example.com");
+            }
+
+            // seed a vendor account if missing
+            if(userRepository.findByEmail("vendor@example.com").isEmpty()){
+                User vendor = new User();
+                vendor.setEmail("vendor@example.com");
+                vendor.setFullName("Vendor");
+                vendor.setPassword(passwordEncoder.encode("vendor123"));
+                vendor.setRole("ROLE_VENDOR");
+                userRepository.save(vendor);
+                System.out.println("[DataSeeder] Created vendor@example.com");
             }
 
             if(categoryRepository.count()==0){
@@ -56,6 +72,13 @@ public class DataSeeder {
                 p4.setName("Milk"); p4.setDescription("Fresh milk 1L"); p4.setPrice(60); p4.setStock(80); p4.setCategory(cats.get(2));
                 Product p5 = new Product();
                 p5.setName("Orange Juice"); p5.setDescription("100% orange juice"); p5.setPrice(120); p5.setStock(60); p5.setCategory(cats.get(3));
+                // assign some products to the seeded vendor if present
+                var optVendor = userRepository.findByEmail("vendor@example.com");
+                if(optVendor.isPresent()){
+                    var vendor = optVendor.get();
+                    p1.setVendor(vendor);
+                    p2.setVendor(vendor);
+                }
                 productRepository.saveAll(List.of(p1,p2,p3,p4,p5));
             }
         };

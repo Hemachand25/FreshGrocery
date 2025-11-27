@@ -19,6 +19,10 @@ export default function Cart() {
 
   useEffect(() => {
     fetchCart()
+    // Listen for cart updates from other pages
+    const handleCartUpdate = () => fetchCart()
+    window.addEventListener('cart-updated', handleCartUpdate)
+    return () => window.removeEventListener('cart-updated', handleCartUpdate)
   }, [])
 
   const fetchCart = async () => {
@@ -36,14 +40,22 @@ export default function Cart() {
   }
 
   const updateQuantity = async (itemId, newQuantity) => {
-    if (newQuantity < 1) return
+    if (newQuantity < 1) {
+      // If quantity is 0 or less, remove the item
+      await removeItem(itemId)
+      return
+    }
     
     setLoading(true)
     try {
       await api.put(`/cart/${itemId}`, null, { params: { quantity: newQuantity } })
+      setMsg('Quantity updated')
+      setTimeout(() => setMsg(''), 2000)
       await fetchCart() // Refresh cart to get updated data
+      window.dispatchEvent(new Event('cart-updated'))
     } catch (error) {
-      setMsg('Error updating quantity')
+      const errorMsg = error.response?.data || error.message || 'Error updating quantity'
+      setMsg(typeof errorMsg === 'string' ? errorMsg : 'Error updating quantity')
       setTimeout(() => setMsg(''), 3000)
     } finally {
       setLoading(false)
@@ -59,14 +71,28 @@ export default function Cart() {
 
     setLoading(true)
     try {
-      const order = await api.post('/cart/checkout')
-      setMsg(`Order placed successfully! Order #${order.data.id}`)
+      const response = await api.post('/cart/checkout')
+      console.log('Checkout response:', response)
+      const order = response.data
+      // Handle different response structures
+      let orderId = 'Unknown'
+      if (order && typeof order === 'object') {
+        if (order.id) orderId = order.id
+        else if (order.data && order.data.id) orderId = order.data.id
+        else if (order.orderId) orderId = order.orderId
+      }
+      setMsg(`Order placed successfully! Order #${orderId}`)
       setCartItems([])
       setTotal(0)
-      setTimeout(() => setMsg(''), 5000)
+      setTimeout(() => {
+        setMsg('')
+        window.location.href = '/orders'
+      }, 3000)
       window.dispatchEvent(new Event('cart-updated'))
     } catch (error) {
-      setMsg('Error checking out')
+      console.error('Checkout error:', error)
+      const errorMsg = error.response?.data?.message || error.response?.data || error.message || 'Error checking out'
+      setMsg(typeof errorMsg === 'string' ? errorMsg : 'Error checking out')
       setTimeout(() => setMsg(''), 3000)
     } finally {
       setLoading(false)
@@ -74,12 +100,21 @@ export default function Cart() {
   }
 
   const removeItem = async (id) => {
+    if (!window.confirm('Remove this item from cart?')) return
+    
     setLoading(true)
     try {
-      await api.delete(`/cart/${id}`)
+      const response = await api.delete(`/cart/${id}`)
+      setMsg(response.data || 'Item removed from cart')
+      setTimeout(() => setMsg(''), 2000)
+      // Refresh cart immediately
       await fetchCart()
+      // Notify navbar to update badge
+      window.dispatchEvent(new Event('cart-updated'))
     } catch (error) {
-      setMsg('Error removing item')
+      console.error('Error removing item:', error)
+      const errorMsg = error.response?.data || error.message || 'Error removing item'
+      setMsg(typeof errorMsg === 'string' ? errorMsg : 'Error removing item')
       setTimeout(() => setMsg(''), 3000)
     } finally {
       setLoading(false)

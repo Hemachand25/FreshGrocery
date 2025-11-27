@@ -16,17 +16,23 @@ public class CartService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
+    private final com.example.backend.repository.VendorOrderRepository vendorOrderRepository;
+    private final com.example.backend.service.NotificationService notificationService;
 
     public CartService(CartRepository cartRepository,
                        CartItemRepository cartItemRepository,
                        ProductRepository productRepository,
                        UserRepository userRepository,
-                       OrderRepository orderRepository) {
+                       OrderRepository orderRepository,
+                       com.example.backend.repository.VendorOrderRepository vendorOrderRepository,
+                       com.example.backend.service.NotificationService notificationService) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.orderRepository = orderRepository;
+        this.vendorOrderRepository = vendorOrderRepository;
+        this.notificationService = notificationService;
     }
 
     public List<CartItemResponse> getCart() {
@@ -64,6 +70,21 @@ public class CartService {
 
         cart = cartRepository.findByUser(user).orElseThrow();
 
+        // Enforce single-vendor cart: if cart has items from a different vendor, reject
+        Long incomingVendorId = product.getVendor() != null ? product.getVendor().getId() : 0L;
+        Long currentVendorId = null;
+        for (CartItem it : cart.getItems()) {
+            Long vid = it.getProduct().getVendor() != null ? it.getProduct().getVendor().getId() : 0L;
+            if (currentVendorId == null && cart.getItems().size() > 0) currentVendorId = vid;
+            if (currentVendorId != null && !vid.equals(currentVendorId)) currentVendorId = vid; // normalize
+        }
+        if (currentVendorId != null && !cart.getItems().isEmpty()) {
+            Long existing = cart.getItems().get(0).getProduct().getVendor() != null ? cart.getItems().get(0).getProduct().getVendor().getId() : 0L;
+            if (!existing.equals(incomingVendorId)) {
+                return "Your cart contains items from another vendor. Please checkout or clear your cart first.";
+            }
+        }
+
         Optional<CartItem> existingItem = cart.getItems().stream()
             .filter(item -> item.getProduct().getId().equals(productId))
             .findFirst();
@@ -94,6 +115,14 @@ public class CartService {
             throw new RuntimeException("Unauthorized");
         }
 
+        if (quantity < 1) {
+            // If quantity is 0 or less, remove the item
+            cart.getItems().remove(item);
+            cartItemRepository.delete(item);
+            cartRepository.save(cart);
+            return "Item removed from cart";
+        }
+
         item.setQuantity(quantity);
         cartItemRepository.save(item);
         return "Quantity updated";
@@ -110,7 +139,11 @@ public class CartService {
             throw new RuntimeException("Unauthorized");
         }
 
+        // Remove item from cart's items list
+        cart.getItems().remove(item);
         cartItemRepository.delete(item);
+        cartRepository.save(cart); // Save cart to ensure changes are persisted
+        
         return "Item removed from cart";
     }
 
@@ -143,10 +176,38 @@ public class CartService {
 
         Order savedOrder = orderRepository.save(order);
 
+        // Split items into vendor-specific VendorOrder entries
+        // Group by vendor id (null vendor -> platform vendor with id 0)
+        java.util.Map<Long, java.util.List<OrderItem>> grouped = new java.util.HashMap<>();
+        for (OrderItem oi : orderItems) {
+            Long vid = 0L;
+            if (oi.getProduct().getVendor() != null) vid = oi.getProduct().getVendor().getId();
+            grouped.computeIfAbsent(vid, k -> new java.util.ArrayList<>()).add(oi);
+        }
+
+        for (var entry : grouped.entrySet()){
+            Long vendorId = entry.getKey();
+            var items = entry.getValue();
+            com.example.backend.model.VendorOrder vo = new com.example.backend.model.VendorOrder();
+            vo.setOrder(savedOrder);
+            if (vendorId != 0L) vo.setVendor(userRepository.findById(vendorId).orElse(null));
+            vo.setItems(items);
+            // set back-reference on items
+            for (OrderItem oi : items) oi.setVendorOrder(vo);
+            vendorOrderRepository.save(vo);
+
+            // notify vendor if present
+            if (vendorId != 0L) {
+                notificationService.publish("vendor:" + vendorId, "order:new", vo);
+            }
+        }
+
         cartItemRepository.deleteAll(cart.getItems());
         cart.getItems().clear();
         cartRepository.save(cart);
 
+        // Refresh the saved order to ensure it has the ID
+        savedOrder = orderRepository.findById(savedOrder.getId()).orElse(savedOrder);
         return savedOrder;
     }
 

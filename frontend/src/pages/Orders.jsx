@@ -98,7 +98,8 @@ export default function Orders() {
           <span className="text-sm text-gray-600">Filter:</span>
           <button onClick={() => { setStatusFilter('ALL'); setCurrentPage(0) }} className={`px-3 py-1 rounded border ${statusFilter==='ALL' ? 'bg-orange-600 text-white' : 'hover:bg-gray-50'}`}>All</button>
           <button onClick={() => { setStatusFilter('ACTIVE'); setCurrentPage(0) }} className={`px-3 py-1 rounded border ${statusFilter==='ACTIVE' ? 'bg-orange-600 text-white' : 'hover:bg-gray-50'}`}>Active</button>
-          <button onClick={() => { setStatusFilter('COMPLETED'); setCurrentPage(0) }} className={`px-3 py-1 rounded border ${statusFilter==='COMPLETED' ? 'bg-orange-600 text-white' : 'hover:bg-gray-50'}`}>Completed</button>
+          <button onClick={() => { setStatusFilter('COMPLETED'); setCurrentPage(0) }} className={`px-3 py-1 rounded border ${statusFilter==='COMPLETED' ? 'bg-orange-600 text-white' : 'hover:bg-gray-50'}`}>Delivered</button>
+          <button onClick={() => { setStatusFilter('CANCELLED'); setCurrentPage(0) }} className={`px-3 py-1 rounded border ${statusFilter==='CANCELLED' ? 'bg-orange-600 text-white' : 'hover:bg-gray-50'}`}>Cancelled</button>
         </div>
       )}
       
@@ -141,95 +142,250 @@ export default function Orders() {
         </div>
       ) : (
         <>
-          <div className="space-y-6">
-            {orders.map(order => (
-              <div key={order.id} className="bg-white shadow rounded p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold">Order #{order.id}</h3>
-                    <p className="text-gray-600 text-sm">
-                      {new Date(order.createdAt).toLocaleDateString()} at {new Date(order.createdAt).toLocaleTimeString()}
-                    </p>
-                    {role === 'ROLE_ADMIN' && order.user && !userId && (
-                      <p className="text-blue-600 text-sm mt-1">
-                        Customer: {order.user.email}
-                      </p>
-                    )}
-                    <div className="mt-2">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        order.status === 'COMPLETED' ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {order.status === 'COMPLETED' ? 'Delivered' : 'Active'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-orange-700">
-                      {formatINR(order.total)}
-                    </p>
-                    {role === 'ROLE_ADMIN' && order.status === 'ACTIVE' && (
-                      <button
-                        onClick={() => markAsDelivered(order.id)}
-                        className="mt-2 bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
-                      >
-                        Mark as Delivered
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold mb-2">Items:</h4>
-                  <ul className="space-y-1">
-                    {order.items.map(item => (
-                      <li key={item.id} className="flex justify-between items-center py-1">
-                        <span className="text-gray-700">
-                          {item.product.name} x {item.quantity}
-                        </span>
-                        <span className="text-gray-600">
-                          {formatINR(item.priceAtPurchase)} each
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+          {/* For non-admins, split into Active and Previous */}
+          {role !== 'ROLE_ADMIN' ? (
+            <div className="space-y-10">
+              {/* Active Orders */}
+              <div>
+                <h3 className="text-xl font-bold mb-3">Active Orders</h3>
+                <div className="space-y-6">
+                  {orders.filter(o => o.status !== 'COMPLETED').length === 0 ? (
+                    <div className="bg-white shadow rounded p-6 text-gray-600">No active orders.</div>
+                  ) : (
+                    orders.filter(o => o.status !== 'COMPLETED').map(order => (
+                      <div key={order.id} className="bg-white shadow rounded p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold">Order #{order.id}</h3>
+                            <p className="text-gray-600 text-sm">
+                              {new Date(order.createdAt).toLocaleDateString()} at {new Date(order.createdAt).toLocaleTimeString()}
+                            </p>
+                            <div className="mt-2">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                order.status === 'CANCELLED' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {order.status === 'CANCELLED' ? 'Cancelled' : 'Active'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-bold text-orange-700">
+                              {formatINR(order.total)}
+                            </p>
+                            {role === 'ROLE_CUSTOMER' && order.status === 'ACTIVE' && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await api.put(`/orders/${order.id}/delivered`)
+                                    setMsg('Order marked as delivered')
+                                    setTimeout(() => setMsg(''), 3000)
+                                    fetchOrders()
+                                  } catch (e) {
+                                    setMsg('Error marking delivered')
+                                    setTimeout(() => setMsg(''), 3000)
+                                  }
+                                }}
+                                className="mt-2 bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
+                              >
+                                Mark as Delivered
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="border-t pt-4">
+                          <h4 className="font-semibold mb-2">Items:</h4>
+                          <ul className="space-y-2">
+                            {order.items.map(item => (
+                              <li key={item.id} className="flex justify-between items-start py-1 border-b border-gray-100 pb-2">
+                                <div className="flex-1">
+                                  <span className="text-gray-700 font-medium">
+                                    {item.product.name} x {item.quantity}
+                                  </span>
+                                  {item.product.vendor && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Vendor: {item.product.vendor.fullName || item.product.vendor.email}
+                                    </p>
+                                  )}
+                                  {item.product.category && (
+                                    <p className="text-xs text-gray-500">
+                                      Category: {item.product.category.name}
+                                    </p>
+                                  )}
+                                </div>
+                                <span className="text-gray-600 font-medium">
+                                  {formatINR(item.priceAtPurchase)} each
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
-          
-          {/* Pagination for admin all orders */}
-          {role === 'ROLE_ADMIN' && !userId && totalPages > 1 && (
-            <div className="mt-8 flex justify-center">
-              <nav className="flex space-x-2">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 0}
-                  className="px-3 py-2 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Previous
-                </button>
-                
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handlePageChange(i)}
-                    className={`px-3 py-2 rounded border ${
-                      currentPage === i ? 'bg-green-600 text-white' : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages - 1}
-                  className="px-3 py-2 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Next
-                </button>
-              </nav>
+
+              {/* Previous Orders */}
+              <div>
+                <h3 className="text-xl font-bold mb-3">Previous Orders</h3>
+                <div className="space-y-6">
+                  {orders.filter(o => o.status === 'COMPLETED').length === 0 ? (
+                    <div className="bg-white shadow rounded p-6 text-gray-600">No previous orders.</div>
+                  ) : (
+                    orders.filter(o => o.status === 'COMPLETED').map(order => (
+                      <div key={order.id} className="bg-white shadow rounded p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold">Order #{order.id}</h3>
+                            <p className="text-gray-600 text-sm">
+                              {new Date(order.createdAt).toLocaleDateString()} at {new Date(order.createdAt).toLocaleTimeString()}
+                            </p>
+                            <div className="mt-2">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                'bg-orange-100 text-orange-800'
+                              }`}>
+                                Delivered
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-bold text-orange-700">
+                              {formatINR(order.total)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="border-t pt-4">
+                          <h4 className="font-semibold mb-2">Items:</h4>
+                          <ul className="space-y-2">
+                            {order.items.map(item => (
+                              <li key={item.id} className="flex justify-between items-start py-1 border-b border-gray-100 pb-2">
+                                <div className="flex-1">
+                                  <span className="text-gray-700 font-medium">
+                                    {item.product.name} x {item.quantity}
+                                  </span>
+                                  {item.product.vendor && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                      Vendor: {item.product.vendor.fullName || item.product.vendor.email}
+                                    </p>
+                                  )}
+                                  {item.product.category && (
+                                    <p className="text-xs text-gray-500">
+                                      Category: {item.product.category.name}
+                                    </p>
+                                  )}
+                                </div>
+                                <span className="text-gray-600 font-medium">
+                                  {formatINR(item.priceAtPurchase)} each
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
+          ) : (
+            // Admin unchanged view
+            <>
+              <div className="space-y-6">
+                {orders.map(order => (
+                  <div key={order.id} className="bg-white shadow rounded p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold">Order #{order.id}</h3>
+                        <p className="text-gray-600 text-sm">
+                          {new Date(order.createdAt).toLocaleDateString()} at {new Date(order.createdAt).toLocaleTimeString()}
+                        </p>
+                        {role === 'ROLE_ADMIN' && order.user && !userId && (
+                          <p className="text-blue-600 text-sm mt-1">
+                            Customer: {order.user.email}
+                          </p>
+                        )}
+                        <div className="mt-2">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            order.status === 'COMPLETED' ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {order.status === 'COMPLETED' ? 'Delivered' : 'Active'}
+                          </span>
+                        </div>
+                      </div>
+                  <div className="text-right">
+                        <p className="text-xl font-bold text-orange-700">
+                          {formatINR(order.total)}
+                        </p>
+                    {/* Admin should NOT have mark as delivered */}
+                      </div>
+                    </div>
+                    
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold mb-2">Items:</h4>
+                      <ul className="space-y-2">
+                        {order.items.map(item => (
+                          <li key={item.id} className="flex justify-between items-start py-1 border-b border-gray-100 pb-2">
+                            <div className="flex-1">
+                              <span className="text-gray-700 font-medium">
+                                {item.product.name} x {item.quantity}
+                              </span>
+                              {item.product.vendor && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Vendor: {item.product.vendor.fullName || item.product.vendor.email}
+                                </p>
+                              )}
+                              {item.product.category && (
+                                <p className="text-xs text-gray-500">
+                                  Category: {item.product.category.name}
+                                </p>
+                              )}
+                            </div>
+                            <span className="text-gray-600 font-medium">
+                              {formatINR(item.priceAtPurchase)} each
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Pagination for admin all orders */}
+              {role === 'ROLE_ADMIN' && !userId && totalPages > 1 && (
+                <div className="mt-8 flex justify-center">
+                  <nav className="flex space-x-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 0}
+                      className="px-3 py-2 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      Previous
+                    </button>
+                    
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handlePageChange(i)}
+                        className={`px-3 py-2 rounded border ${
+                          currentPage === i ? 'bg-green-600 text-white' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages - 1}
+                      className="px-3 py-2 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      Next
+                    </button>
+                  </nav>
+                </div>
+              )}
+            </>
           )}
         </>
       )}
